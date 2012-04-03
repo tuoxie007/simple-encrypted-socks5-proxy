@@ -2,7 +2,7 @@
 
 from toolkit import *
 # from twisted.internet import protocol, reactor
-import socket
+import socket, sys
 from socks import *
 from easynet import *
 
@@ -68,7 +68,8 @@ class ProxyProtocol(object):
             self.target = (hostname, ordlong(port))
             try:
                 self.remote_sock = socket.socket()
-                self.remote_sock.connect(("127.0.0.1", 3031))
+                global proxy_host, proxy_port
+                self.remote_sock.connect((proxy_host, proxy_port))
                 self.remote_sock.sendall(chrlong(len(self.target[0])) + xor(self.target[0]) + chrlong(self.target[1]))
             except:
                 self.transport.write(SOCKS_VER5 + REP_Network_unreachable)
@@ -82,7 +83,15 @@ class ProxyFactory(object):
     def buildProtocol(self, addr):
         return ProxyProtocol()
 
-
+if len(sys.argv) == 1:
+    proxy_host = "your_proxy_server_hostname"
+    proxy_port = 3031
+elif len(sys.argv) == 2:
+    proxy_host = sys.argv[1]
+    proxy_port = 3031
+elif len(sys.argv) == 3:
+    proxy_host = sys.argv[1]
+    proxy_port = int(sys.argv[2])
 reactor = Reactor()
 reactor.listenTCP(3030, ProxyFactory())
 try:
