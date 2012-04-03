@@ -6,6 +6,9 @@ The defualt local port is 3030, the default server port is 3031.
 
 You can change them easily.
 
+#####Avoid hacks using your server
+Change the xor number in the toolkit.py, search the word "200", change to another value.
+
 #####Run local.py on your local machine
 
 	./local.py
