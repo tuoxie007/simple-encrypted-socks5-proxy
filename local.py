@@ -83,18 +83,10 @@ class ProxyFactory(object):
     def buildProtocol(self, addr):
         return ProxyProtocol()
 
-if len(sys.argv) == 1:
-    proxy_host = "your_proxy_server_hostname"
-    proxy_port = 3031
-elif len(sys.argv) == 2:
-    proxy_host = sys.argv[1]
-    proxy_port = 3031
-elif len(sys.argv) == 3:
-    proxy_host = sys.argv[1]
-    proxy_port = int(sys.argv[2])
+proxy_host = "your_proxy_server_hostname"
+proxy_port = 3031
 reactor = Reactor()
 reactor.listenTCP(3030, ProxyFactory())
-print "listen at %s:%s" % (proxy_host, proxy_port)
 try:
     reactor.run()
 except KeyboardInterrupt:
