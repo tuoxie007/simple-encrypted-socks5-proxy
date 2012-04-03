@@ -94,6 +94,7 @@ elif len(sys.argv) == 3:
     proxy_port = int(sys.argv[2])
 reactor = Reactor()
 reactor.listenTCP(3030, ProxyFactory())
+print "listen at %s:%s" % (proxy_host, proxy_port)
 try:
     reactor.run()
 except KeyboardInterrupt:
