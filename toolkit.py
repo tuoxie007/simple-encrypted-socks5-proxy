@@ -63,16 +63,12 @@ def pipe(reader_sock, writer_file):
     reader_sock.setblocking(0)
     while True:
         try:
-            print 'selecting'
             select.select([reader_sock], [], [])
             try:
                 data = reader_sock.recv(1024)
                 if data:
                     try:
-                        print "received from upper %s" % len(data)
-                        # writer_file.write(data)
                         writer_file.write(xor(data))
-                        print "wrote"
                     except KeyboardInterrupt:
                         raise
                     except: # writer socket closed

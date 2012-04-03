@@ -1,15 +1,16 @@
 #!/usr/bin/python
 
 from toolkit import *
-from twisted.internet import protocol, reactor
-from socket import socket
+# from twisted.internet import protocol, reactor
+import socket
+from easynet import *
 
-class ProxyProtocal(protocol.Protocol):
+class ProxyProtocol(object):
     client_data = ""
     target = None
     remote_sock = None
+    transport = None
     def dataReceived(self, data):
-        print "received from client %s" % len(data)
         if self.target:
             self.remote_sock.sendall(xor(data))
         else:
@@ -28,7 +29,7 @@ class ProxyProtocal(protocol.Protocol):
             index += 2
             
             try:
-                self.remote_sock = socket()
+                self.remote_sock = socket.socket()
                 self.remote_sock.connect(self.target)
                 if len(self.client_data) > index:
                     self.remote_sock.sendall(xor(self.client_data[index:]))
@@ -36,13 +37,14 @@ class ProxyProtocal(protocol.Protocol):
                 self.transport.loseConnection()
             else:
                 response_pipe_thread = threading.Thread(target=pipe, args=(self.remote_sock, self.transport))
+                response_pipe_thread.daemon = True
                 response_pipe_thread.start()
 
-class ProxyFactory(protocol.Factory):
+class ProxyFactory(object):
     def buildProtocol(self, addr):
-        return ProxyProtocal()
+        return ProxyProtocol()
 
-
+reactor = Reactor()
 reactor.listenTCP(3031, ProxyFactory())
 try:
     reactor.run()

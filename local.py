@@ -1,45 +1,18 @@
 #!/usr/bin/python
 
 from toolkit import *
-from twisted.internet import protocol, reactor
-from socket import socket
+# from twisted.internet import protocol, reactor
+import socket
+from socks import *
+from easynet import *
 
-SOCKS_VER5 = "\x05"
-METHOD_NO_AUTHENTICATION_REQUIRED = '\x00'
-METHOD_GSSAPI = '\x01'
-METHOD_USERNAME_PASSWORD = '\x02'
-METHOD_IANA_ASSIGNED_MIN = '\x03'
-METHOD_IANA_ASSIGNED_MAX = '\x7F'
-METHOD_RESERVED_FOR_PRIVATE_METHODS_MIN = '\x80'
-METHOD_RESERVED_FOR_PRIVATE_METHODS_MAX = '\xFE'
-METHOD_NO_ACCEPTABLE_METHODS = '\xFF'
-
-CMD_CONNECT = '\x01'
-CMD_BIND = '\x02'
-CMD_UDP = '\x03'
-
-RSV = '\x00'
-ATYP_IPV4 = '\x01'
-ATYP_DOMAINNAME = '\x03'
-ATYP_IPV6 = '\x04'
-
-REP_succeeded = '\x00'
-REP_general_SOCKS_server_failure = '\x01'
-REP_connection_not_allowed_by_ruleset = '\x02'
-REP_Network_unreachable = '\x03'
-REP_Host_unreachable = '\x04'
-REP_Connection_refused = '\x05'
-REP_TTL_expired = '\x06'
-REP_Command_not_supported = '\x07'
-REP_Address_type_not_supported = '\x08'
-
-class ProxyProtocal(protocol.Protocol):
+class ProxyProtocol(object):
     replied_socks = False
     socks_data = ""
     target = None
     remote_sock = None
+    transport = None
     def dataReceived(self, data):
-        print "received from client %s" % len(data)
         if self.target:
             self.remote_sock.sendall(xor(data))
         else:
@@ -93,9 +66,8 @@ class ProxyProtocal(protocol.Protocol):
              #read command over
             
             self.target = (hostname, ordlong(port))
-            
             try:
-                self.remote_sock = socket()
+                self.remote_sock = socket.socket()
                 self.remote_sock.connect(("127.0.0.1", 3031))
                 self.remote_sock.sendall(chrlong(len(self.target[0])) + xor(self.target[0]) + chrlong(self.target[1]))
             except:
@@ -103,13 +75,15 @@ class ProxyProtocal(protocol.Protocol):
             else:
                 self.transport.write(SOCKS_VER5 + REP_succeeded + RSV + address_type + domain_length + domain + port)
                 response_pipe_thread = threading.Thread(target=pipe, args=(self.remote_sock, self.transport))
+                response_pipe_thread.daemon = True
                 response_pipe_thread.start()
 
-class ProxyFactory(protocol.Factory):
+class ProxyFactory(object):
     def buildProtocol(self, addr):
-        return ProxyProtocal()
+        return ProxyProtocol()
 
 
+reactor = Reactor()
 reactor.listenTCP(3030, ProxyFactory())
 try:
     reactor.run()
