@@ -48,7 +48,6 @@ class Reactor(object):
                     return
                 else:
                     if socks:
-                        print "socklist %s" % len(self.socklist); sys.stdout.flush()
                         break
             for sock in socks:
                 if sock is self.servsock:
