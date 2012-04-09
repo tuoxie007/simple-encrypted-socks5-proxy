@@ -83,19 +83,16 @@ def pipe(reader_sock, writer_file):
         except KeyboardInterrupt:
             raise
     writer_file.loseConnection()
-        
+
 def shutdown_connection(connection):
     if type(connection) is list:
         for c in connection:
             shutdown_connection(c)
     else:
         try:
-            connection.shutdown(socket.SHUT_RDWR)
-        except:
-            pass
-        try:
             connection.close()
         except:
+            print "shutdown failed"
             pass
 
 #print toHex('\x01\x12\n')

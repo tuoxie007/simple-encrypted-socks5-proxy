@@ -1,15 +1,21 @@
 
-import socket, select
+import socket, select, sys
+
 class AutoFlushWriter(object):
-    def __init__(self, writer):
-        self.writer = writer
+    def __init__(self, sock, reactor):
+        self.writer = sock.makefile("wb")
+        self.sock = sock
+        self.reactor = reactor
+
     def write(self, data):
         self.writer.write(data)
         self.writer.flush()
-        
+    
     def loseConnection(self):
         try:
-            self.writer.close()
+            self.reactor.socklist.remove(self.sock)
+            del self.reactor.connection_handlers[self.sock]
+            self.sock.close()
         except:
             pass
 
@@ -40,12 +46,13 @@ class Reactor(object):
                     return
                 else:
                     if socks:
+                        print "socklist %s" % len(self.socklist); sys.stdout.flush()
                         break
             for sock in socks:
                 if sock is self.servsock:
                     reqcon, addr = self.servsock.accept()
                     handler = self.factory.buildProtocol(addr)
-                    handler.transport = AutoFlushWriter(reqcon.makefile("wb"))
+                    handler.transport = AutoFlushWriter(reqcon, self)
                     self.connection_handlers[reqcon] = handler
                     self.socklist.append(reqcon)
                     reqcon.setblocking(False)
@@ -68,3 +75,4 @@ class Reactor(object):
                         else:
                             self.socklist.remove(sock)
                             del self.connection_handlers[sock]
+                            handler.loseConnection()

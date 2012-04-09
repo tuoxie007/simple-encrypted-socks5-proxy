@@ -40,6 +40,9 @@ class ProxyProtocol(object):
                 response_pipe_thread.daemon = True
                 response_pipe_thread.start()
 
+    def loseConnection(self):
+        shutdown_connection(self.remote_sock)
+
 class ProxyFactory(object):
     def buildProtocol(self, addr):
         return ProxyProtocol()
