@@ -80,13 +80,16 @@ class ProxyProtocol(object):
                 response_pipe_thread.start()
 
     def loseConnection(self):
-        shutdown_connection(self.remote_sock)
+        try:
+            self.remote_sock.close()
+        except:
+            pass
 
 class ProxyFactory(object):
     def buildProtocol(self, addr):
         return ProxyProtocol()
 
-proxy_host = "your_proxy_server_hostname"
+proxy_host = "your_remote_proxy_ip"
 proxy_port = 3031
 reactor = Reactor()
 reactor.listenTCP(3030, ProxyFactory())

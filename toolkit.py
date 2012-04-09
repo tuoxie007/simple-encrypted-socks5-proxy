@@ -82,6 +82,8 @@ def pipe(reader_sock, writer_file):
                 break
         except KeyboardInterrupt:
             raise
+        except:
+            break
     writer_file.loseConnection()
 
 def shutdown_connection(connection):

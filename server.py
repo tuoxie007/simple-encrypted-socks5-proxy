@@ -41,7 +41,10 @@ class ProxyProtocol(object):
                 response_pipe_thread.start()
 
     def loseConnection(self):
-        shutdown_connection(self.remote_sock)
+        try:
+            self.remote_sock.close()
+        except:
+            pass
 
 class ProxyFactory(object):
     def buildProtocol(self, addr):
