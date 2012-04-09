@@ -27,10 +27,12 @@ class Reactor(object):
     def listenTCP(self, addr, factory):
         self.servsock = socket.socket()
         self.servsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.servsock.bind(("0.0.0.0", addr) if type(addr) is int else addr)
-        self.servsock.listen(100)
+        addr = ("0.0.0.0", addr) if type(addr) is int else addr
+        self.servsock.bind(addr)
+        self.servsock.listen(1000)
         self.socklist.append(self.servsock)
         self.factory = factory
+        print addr
     
     def run(self):
         while True:
