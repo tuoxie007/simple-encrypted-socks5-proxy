@@ -1,7 +1,7 @@
 
 __author__ = 'xuke'
 
-import traceback, threading, select
+import traceback, threading, select, config
 from random import choice
 from string import maketrans
 
@@ -43,7 +43,7 @@ intab = ''
 outtab = ''
 for c in range(256):
     intab += chr(c)
-    outtab += chr(c^200)
+    outtab += config.encode(c)
 trantab = maketrans(intab, outtab)
 
 def xor(src):

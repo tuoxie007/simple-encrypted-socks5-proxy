@@ -1,99 +1,74 @@
 #!/usr/bin/python
 
+import socket, sys, select, threading, socks, config
 from toolkit import *
-# from twisted.internet import protocol, reactor
-import socket, sys
-from socks import *
-from easynet import *
 
-class ProxyProtocol(object):
-    replied_socks = False
-    socks_data = ""
-    target = None
-    remote_sock = None
-    transport = None
-    def dataReceived(self, data):
-        if self.target:
-            self.remote_sock.sendall(xor(data))
-        else:
-            if not self.replied_socks:
-                self.transport.write(SOCKS_VER5)
-                self.transport.write(METHOD_NO_AUTHENTICATION_REQUIRED)
-                self.replied_socks = True
-            
-            self.socks_data += data
-            index = 0
-            if len(self.socks_data) < index+2:
-                return
-            socks_version = self.socks_data[index]
-            index += 1
-            method_number = ord(self.socks_data[index])
-            index += 1
-            if len(self.socks_data) < index+method_number+4:
-                return
-            methods_client_supported = self.socks_data[index:index+method_number]
-            index += method_number
-            
-            socks_version = self.socks_data[index]
-            index += 1
-            command = self.socks_data[index]
-            index += 1
-            rsv = self.socks_data[index]
-            index += 1
-            address_type = self.socks_data[index]
-            index += 1
-            if address_type == ATYP_DOMAINNAME:
-                if len(self.socks_data) < index+1:
-                    return
-                domain_length = self.socks_data[index]
-                index += 1
-                if len(self.socks_data) < index+ord(domain_length)+2:
-                    return
-                domain = self.socks_data[index:index+ord(domain_length)]
-                hostname = domain
-                index += ord(domain_length)
-                port = self.socks_data[index:index+2]
-                index += 2
-            elif address_type == ATYP_IPV4:
-                domain_length = ''
-                if len(self.socks_data) < index+6:
-                    return
-                domain = self.socks_data[index:index+4]
-                hostname = '%s.%s.%s.%s' % (str(ord(domain[0])), str(ord(domain[1])), str(ord(domain[2])), str(ord(domain[3])))
-                index += 4
-                port = self.socks_data[index:index+2]
-                index += 2
-             #read command over
-            
-            self.target = (hostname, ordlong(port))
+class ProxyThread(threading.Thread):
+    def set_socks(self, client_sock, server_sock):
+        self.server_sock = server_sock
+        self.client_sock = client_sock
+    def run(self):
+        while True:
+            end = False
             try:
-                self.remote_sock = socket.socket()
-                global proxy_host, proxy_port
-                self.remote_sock.connect((proxy_host, proxy_port))
-                self.remote_sock.sendall(chrlong(len(self.target[0])) + xor(self.target[0]) + chrlong(self.target[1]))
+                socks = select.select([self.client_sock, self.server_sock], [], [], 3)[0]
             except:
-                self.transport.write(SOCKS_VER5 + REP_Network_unreachable)
+                end = True
             else:
-                self.transport.write(SOCKS_VER5 + REP_succeeded + RSV + address_type + domain_length + domain + port)
-                response_pipe_thread = threading.Thread(target=pipe, args=(self.remote_sock, self.transport))
-                response_pipe_thread.daemon = True
-                response_pipe_thread.start()
-
-    def loseConnection(self):
-        try:
-            self.remote_sock.close()
-        except:
-            pass
-
-class ProxyFactory(object):
-    def buildProtocol(self, addr):
-        return ProxyProtocol()
-
-proxy_host = "your_remote_proxy_ip"
-proxy_port = 3031
-reactor = Reactor()
-reactor.listenTCP(3030, ProxyFactory())
+                for sock in socks:
+                    try:
+                        data = sock.recv(1024)
+                    except:
+                        end = True
+                    else:
+                        if not data:
+                            end = True
+                        else:
+                            try:
+                                if sock is self.client_sock:
+                                    self.server_sock.sendall(xor(data))
+                                else:
+                                    self.client_sock.sendall(xor(data))
+                            except:
+                                end = True
+            if end:
+                try:
+                    self.clien_sock.close()
+                except:
+                    pass
+                try:
+                    self.server_sock.close()
+                except:
+                    pass
+                break
+    
 try:
-    reactor.run()
+    servsock = socket.socket()
+    servsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    servsock.bind(config.local_bind_addr)
+    servsock.listen(1000)
+
+    print "--> " + "%s:%s" % config.local_bind_addr + " --> " + "%s:%s" % config.server_proxy_addr + " -->"
+
+    while True:
+        while True:
+            try:
+                sock = None
+                sock = select.select([servsock], [], [], 3)[0]
+            except KeyboardInterrupt:
+                raise
+            except:
+                raise
+            else:
+                if sock:
+                    break
+        client_sock, client_addr = servsock.accept()
+        # socks_ret = socks.accept(client_sock)
+        server_sock = socket.socket()
+        server_sock.connect(config.server_proxy_addr)
+        proxy = ProxyThread()
+        proxy.daemon = True
+        proxy.set_socks(client_sock, server_sock)
+        proxy.start()
 except KeyboardInterrupt:
-    pass
+    print

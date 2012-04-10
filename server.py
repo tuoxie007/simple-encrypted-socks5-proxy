@@ -1,58 +1,87 @@
 #!/usr/bin/python
 
+import socket, sys, select, threading, socks, config
 from toolkit import *
-# from twisted.internet import protocol, reactor
-import socket
-from easynet import *
 
-class ProxyProtocol(object):
-    client_data = ""
-    target = None
-    remote_sock = None
-    transport = None
-    def dataReceived(self, data):
-        if self.target:
-            self.remote_sock.sendall(xor(data))
-        else:
-            self.client_data += data
-            index = 0
-            if len(self.client_data) < index+2:
-                return
-            target_len = ordlong(self.client_data[index:index+2])    
-            index += 2
-            if len(self.client_data) < index + target_len + 2:
-                return
-            target_host = xor(self.client_data[index:index+target_len])
-            index += target_len
-            target_port = ordlong(self.client_data[index:index+2])
-            self.target = (target_host, target_port)
-            index += 2
-            
+class ProxyThread(threading.Thread):
+    def set_socks(self, client_sock, server_sock):
+        self.server_sock = server_sock
+        self.client_sock = client_sock
+    def run(self):
+        while True:
+            end = False
             try:
-                self.remote_sock = socket.socket()
-                self.remote_sock.connect(self.target)
-                if len(self.client_data) > index:
-                    self.remote_sock.sendall(xor(self.client_data[index:]))
+                socks = select.select([self.client_sock, self.server_sock], [], [], 3)[0]
             except:
-                self.transport.loseConnection()
+                end = True
             else:
-                response_pipe_thread = threading.Thread(target=pipe, args=(self.remote_sock, self.transport))
-                response_pipe_thread.daemon = True
-                response_pipe_thread.start()
+                for sock in socks:
+                    try:
+                        data = sock.recv(1024)
+                    except:
+                        end = True
+                    else:
+                        if not data:
+                            end = True
+                        else:
+                            try:
+                                if sock is self.client_sock:
+                                    self.server_sock.sendall(xor(data))
+                                else:
+                                    self.client_sock.sendall(xor(data))
+                            except:
+                                end = True
+            if end:
+                try:
+                    self.clien_sock.close()
+                except:
+                    pass
+                try:
+                    self.server_sock.close()
+                except:
+                    pass
+                break
+    
 
-    def loseConnection(self):
-        try:
-            self.remote_sock.close()
-        except:
-            pass
-
-class ProxyFactory(object):
-    def buildProtocol(self, addr):
-        return ProxyProtocol()
-
-reactor = Reactor()
-reactor.listenTCP(3031, ProxyFactory())
 try:
-    reactor.run()
+    proxy_host = "tuoxie.me"
+    proxy_port = 3031
+
+    servsock = socket.socket()
+    servsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    servsock.bind(config.server_bind_addr)
+    servsock.listen(1000)
+
+    print "--> " + "%s:%s" % config.server_bind_addr + " -->"
+
+    while True:
+        while True:
+            try:
+                sock = None
+                sock = select.select([servsock], [], [], 3)[0]
+            except KeyboardInterrupt:
+                raise
+            except:
+                raise
+            else:
+                if sock:
+                    break
+        client_sock, client_addr = servsock.accept()
+        socks_ret = socks.accept(client_sock, True)
+        if not socks_ret:
+            continue
+        server_sock = socket.socket()
+        try:
+            server_sock.connect(socks_ret[0])
+        except KeyboardInterrupt:
+            raise
+        except:
+            socks.reply(client_sock, socks_ret[1], True, False)
+        else:
+            socks.reply(client_sock, socks_ret[1], True, True)
+            proxy = ProxyThread()
+            proxy.daemon = True
+            proxy.set_socks(client_sock, server_sock)
+            proxy.start()
 except KeyboardInterrupt:
-    pass
+    print
