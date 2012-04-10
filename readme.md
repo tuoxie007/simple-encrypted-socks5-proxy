@@ -1,13 +1,15 @@
 ##Usage:
 
 #####Config your server host and/or port in the local.py.
+Change address in the config.py
+>server_bind_addr = ("0.0.0.0", 3030)
+>local_bind_addr = ("127.0.0.1", 7070)
 
-The defualt local port is 3030, the default server port is 3031.
+>server_proxy_addr = ("your_remote_proxy_ip", server_bind_addr[1])
 
-You can change them easily.
 
 #####Avoid hacks using your server
-Change the xor number in the toolkit.py, search the word "200", change to another value(0~255). Or your can change the encrypt arithmetic
+Change the encode function in the config.py, change ^200 to another value(0~255). Or your can change the encrypt arithmetic, such as ^20^30
 
 #####Run local.py on your local machine
 
