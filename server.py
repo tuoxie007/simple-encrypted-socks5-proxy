@@ -26,8 +26,10 @@ class ProxyThread(threading.Thread):
                         else:
                             try:
                                 if sock is self.client_sock:
+                                    #print "%s bytes from client" % len(data)
                                     self.server_sock.sendall(xor(data))
                                 else:
+                                    #print "%s bytes from server" % len(data)
                                     self.client_sock.sendall(xor(data))
                             except:
                                 end = True
@@ -71,13 +73,16 @@ try:
         if not socks_ret:
             continue
         server_sock = socket.socket()
+        server_sock.settimeout(3)
         try:
             server_sock.connect(socks_ret[0])
         except KeyboardInterrupt:
             raise
         except:
+            #print "failed to connect to %s" % str(socks_ret[0])
             socks.reply(client_sock, socks_ret[1], True, False)
         else:
+            server_sock.settimeout(None)
             socks.reply(client_sock, socks_ret[1], True, True)
             proxy = ProxyThread()
             proxy.daemon = True
