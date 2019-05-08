@@ -83,7 +83,12 @@ try:
             socks.reply(client_sock, socks_ret[1], True, False)
         else:
             server_sock.settimeout(None)
-            socks.reply(client_sock, socks_ret[1], True, True)
+            port = server_sock.getsockname()[1]port = server_sock.getsockname()[1]
+            bindaddr={'address_type': chr(0x01),
+                      'domain_length': '',
+                      'domain': socket.inet_aton(server_sock.getsockname()[0]),
+                      'port': chr(port/256) + chr(port%256)}
+            socks.reply(client_sock, bindaddr, True, True)
             proxy = ProxyThread()
             proxy.daemon = True
             proxy.set_socks(client_sock, server_sock)
