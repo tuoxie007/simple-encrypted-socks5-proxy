@@ -83,7 +83,7 @@ try:
             socks.reply(client_sock, socks_ret[1], True, False)
         else:
             server_sock.settimeout(None)
-            port = server_sock.getsockname()[1]port = server_sock.getsockname()[1]
+            port = server_sock.getsockname()[1]
             bindaddr={'address_type': chr(0x01),
                       'domain_length': '',
                       'domain': socket.inet_aton(server_sock.getsockname()[0]),
